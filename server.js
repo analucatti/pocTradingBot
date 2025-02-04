@@ -11,6 +11,7 @@ const WebSocket = require('ws');
 // Whenever an event happens (texts you, snapchat, anything) you get a notification
 
 const wss = new WebSocket("wss://stream.data.alpaca.markets/v1beta1/news");
+// https://docs.alpaca.markets/docs/real-time-crypto-pricing-data TODO change to add crypto data
 
 wss.on('open', function() {
     console.log("Websocket connected!");
@@ -27,7 +28,7 @@ wss.on('open', function() {
     // Subscribe to all news feeds
     const subscribeMsg = {
         action: 'subscribe',
-        news: ['*'] // ["TSLA"]
+        news: ['BTC'] // ["*"]
     };
     wss.send(JSON.stringify(subscribeMsg)); // Connecting us to the live data source of news
 });
@@ -42,7 +43,7 @@ wss.on('message', async function(message) {
 
         // Ask ChatGPT its thoughts on the headline
         const apiRequestBody = {
-            "model": "gpt-3.5-turbo",
+            "model": "gpt-4o-mini",
             "messages": [
                 { role: "system", content: "Only respond with a number from 1-100 detailing the impact of the headline." }, // How ChatGPT should talk to us
                 { role: "user", content: "Given the headline '" + currentEvent.headline + "', show me a number from 1-100 detailing the impact of this headline."}
@@ -76,12 +77,11 @@ wss.on('message', async function(message) {
                 qty: 1,
                 side: 'buy',
                 type: 'market',
-                time_in_force: 'day' // day ends, it wont trade.
+                time_in_force: 'day' // day ends, it won't trade.
             });
         } else if (companyImpact <= 30) { // else if impact <= 30: SELL ALL OF STOCK
             // Sell stock
             let closedPosition = alpaca.closePosition(tickerSymbol); //(tickerSymbol);
         }
-        
     }
 });
