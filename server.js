@@ -2,18 +2,10 @@ const Alpaca = require("@alpacahq/alpaca-trade-api");
 const alpaca = new Alpaca(); // Environment Variables
 const WebSocket = require('ws');
 
-// Server < -- > Data Source
-// Communication can go both ways
-// Data source can send us information
-// Send data to the data source (Authenticate, ask what data we want)
+// const wss = new WebSocket("wss://stream.data.alpaca.markets/v1beta1/news");
+const wss = new WebSocket("wss://stream.data.alpaca.markets/v1beta3/crypto/us");
 
-// WebSockets are like push notifications on your phone
-// Whenever an event happens (texts you, snapchat, anything) you get a notification
-
-const wss = new WebSocket("wss://stream.data.alpaca.markets/v1beta1/news");
-// https://docs.alpaca.markets/docs/real-time-crypto-pricing-data TODO change to add crypto data
-
-wss.on('open', function() {
+wss.on('open', function () {
     console.log("Websocket connected!");
 
     // We now have to log in to the data source
@@ -28,28 +20,37 @@ wss.on('open', function() {
     // Subscribe to all news feeds
     const subscribeMsg = {
         action: 'subscribe',
-        news: ['BTC'] // ["*"]
+        bars: ['BTC/USD'] // ["*"]
     };
-    wss.send(JSON.stringify(subscribeMsg)); // Connecting us to the live data source of news
+    wss.send(JSON.stringify(subscribeMsg)); // Connecting us to the live data source
 });
 
-wss.on('message', async function(message) {
+wss.on('message', async function (message) {
     console.log("Message is " + message);
     // message is a STRING
     const currentEvent = JSON.parse(message)[0];
     // "T": "n" newsEvent
-    if(currentEvent.T === "n") { // This is a news event
+    if (currentEvent.T === "b") { // This is bars event
         let companyImpact = 0;
 
-        // Ask ChatGPT its thoughts on the headline
+        // Ask ChatGPT its thoughts on the bars
         const apiRequestBody = {
             "model": "gpt-4o-mini",
             "messages": [
-                { role: "system", content: "Only respond with a number from 1-100 detailing the impact of the headline." }, // How ChatGPT should talk to us
-                { role: "user", content: "Given the headline '" + currentEvent.headline + "', show me a number from 1-100 detailing the impact of this headline."}
+                {role: "system", content: "Only respond with a number 1 for short 0 for long."},
+                {
+                    role: "user", content: "Given real time market data for open price: "
+                        + currentEvent.o
+                        + ", high price: " + currentEvent.h
+                        + ", low price: " + currentEvent.l
+                        + ", close price: " + currentEvent.c
+                        + ", volume: " + currentEvent.v
+                        + ", and symbol: " + currentEvent.s
+                        + ", show me which if I should submit a long or short position considering best market indicators: "
+                        + currentEvent
+                }
             ]
         }
-
         await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -67,21 +68,22 @@ wss.on('message', async function(message) {
         });
 
         // Make trades based on the output (of the impact saved in companyImpact)
-        const tickerSymbol = currentEvent.symbols[0];
+        const tickerSymbol = currentEvent.S;
 
-        // 1 - 100, 1 being the most negative, 100 being the most positive impact on a company.
-        if(companyImpact >= 70) { // if score >= 70 : BUY STOCK
+        if (companyImpact === 1) {
             // Buy stock
             let order = await alpaca.createOrder({
                 symbol: tickerSymbol,
-                qty: 1,
+                national: 10,
                 side: 'buy',
                 type: 'market',
-                time_in_force: 'day' // day ends, it won't trade.
+                time_in_force: 'gtc' // day ends, it won't trade.
             });
-        } else if (companyImpact <= 30) { // else if impact <= 30: SELL ALL OF STOCK
+            console.log("Bought stock: ", order);
+        } else if (companyImpact === 0) {
             // Sell stock
             let closedPosition = alpaca.closePosition(tickerSymbol); //(tickerSymbol);
+            console.log("Closed position: ", closedPosition);
         }
     }
 });
