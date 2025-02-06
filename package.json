@@ -1,16 +1,19 @@
 {
-  "name": "chatgpttradingbot",
+  "name": "pocTradingBot",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "run": "yarn build & yarn start"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@alpacahq/alpaca-trade-api": "^2.16.1",
-    "ws": "^8.13.0"
+    "@alpacahq/alpaca-trade-api": "^3.1.3"
+  },
+  "devDependencies": {
+    "@types/msgpack5": "^3.4.6",
+    "@types/ws": "^8.0.0",
+    "typescript": "^5.0.0"
   }
 }
